@@ -128,8 +128,14 @@ namespace FreeSql.KingbaseES
                         {
                             return;
                         }
+
                         try
                         {
+                            // v9 版本下面 pg_ sys_ 都支持，导致 v9 版本识别成 v8r3了，需要额外添加判断条件
+                            //SELECT (select 1 from sys_tables limit 1) a,(select 1 from pg_tables limit 1) b;
+                            //经过查看文档 v8r3有命令：show case_sensitive ，v8r6 和以后通过命令 show enable_ci 判断，
+                            //前一个命令不存在了
+                            _orm.Ado.ExecuteNonQuery(" show case_sensitive");
                             _orm.Ado.ExecuteNonQuery(" select 1 from sys_tables limit 1");
                             _isSysV8R3 = true;
                         }
@@ -152,8 +158,8 @@ namespace FreeSql.KingbaseES
             {
                 if (sb.Length > 0) sb.Append("\r\n");
                 var tb = obj.tableSchema;
-                if (tb == null) throw new Exception(CoreStrings.S_Type_IsNot_Migrable(obj.tableSchema.Type.FullName));
-                if (tb.Columns.Any() == false) throw new Exception(CoreStrings.S_Type_IsNot_Migrable_0Attributes(obj.tableSchema.Type.FullName));
+                if (tb == null) throw new Exception(CoreErrorStrings.S_Type_IsNot_Migrable(obj.tableSchema.Type.FullName));
+                if (tb.Columns.Any() == false) throw new Exception(CoreErrorStrings.S_Type_IsNot_Migrable_0Attributes(obj.tableSchema.Type.FullName));
                 var tbname = _commonUtils.SplitTableName(tb.DbName);
                 if (tbname?.Length == 1) tbname = new[] { public_, tbname[0] };
 
@@ -398,7 +404,8 @@ where {pg_}namespace.nspname={{0}} and {pg_}class.relname={{1}} and {pg_}constra
                     sb.Append("ALTER TABLE ").Append(_commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}")).Append(" DROP CONSTRAINT ").Append(oldpk).Append(";\r\n");
 
                 //创建临时表，数据导进临时表，然后删除原表，将临时表改名为原表名
-                var tablename = tboldname == null ? _commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}") : _commonUtils.QuoteSqlName($"{tboldname[0]}.{tboldname[1]}");
+                var newtablename = _commonUtils.QuoteSqlName($"{tbname[0]}.{tbname[1]}");
+                var tablename = tboldname == null ? newtablename : _commonUtils.QuoteSqlName($"{tboldname[0]}.{tboldname[1]}");
                 var tmptablename = _commonUtils.QuoteSqlName($"{tbname[0]}.FTmp_{tbname[1]}");
                 //创建临时表
                 sb.Append("CREATE TABLE IF NOT EXISTS ").Append(tmptablename).Append(" ( ");
@@ -453,7 +460,7 @@ where {pg_}namespace.nspname={{0}} and {pg_}class.relname={{1}} and {pg_}constra
                 {
                     sb.Append("CREATE ");
                     if (uk.IsUnique) sb.Append("UNIQUE ");
-                    sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(ReplaceIndexName(uk.Name, tbname[1]))).Append(" ON ").Append(tablename).Append("(");
+                    sb.Append("INDEX ").Append(_commonUtils.QuoteSqlName(ReplaceIndexName(uk.Name, tbname[1]))).Append(" ON ").Append(newtablename).Append("(");
                     foreach (var tbcol in uk.Columns)
                     {
                         sb.Append(_commonUtils.QuoteSqlName(tbcol.Column.Attribute.Name));

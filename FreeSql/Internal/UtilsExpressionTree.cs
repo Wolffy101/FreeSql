@@ -113,7 +113,7 @@ namespace FreeSql.Internal
                     else colattr.IsIgnore = true;
                     //Navigate 错误提示
                     var pnvAttr = common.GetEntityNavigateAttribute(trytb.Type, p);
-                    if (pnvAttr != null) throw new Exception(CoreStrings.Navigation_Missing_SetProperty(trytb.Type.DisplayCsharp(), p.Name));
+                    if (pnvAttr != null) throw new Exception(CoreErrorStrings.Navigation_Missing_SetProperty(trytb.Type.DisplayCsharp(), p.Name));
                 }
                 if (tp == null && colattr?.IsIgnore != true)
                 {
@@ -153,7 +153,7 @@ namespace FreeSql.Internal
             StringBuilder cscode = null;
             if (common.CodeFirst.IsLazyLoading && propsLazy.Any())
             {
-                if (trytb.Type.IsPublic == false && trytb.Type.IsNestedPublic == false) throw new Exception(CoreStrings.LazyLoading_EntityMustDeclarePublic(trytbTypeName));
+                if (trytb.Type.IsPublic == false && trytb.Type.IsNestedPublic == false) throw new Exception(CoreErrorStrings.LazyLoading_EntityMustDeclarePublic(trytbTypeName));
 
                 trytbTypeLazyName = $"FreeSqlLazyEntity__{Regex.Replace(trytbTypeName, @"[^\w\d]", "_")}";
 
@@ -179,14 +179,14 @@ namespace FreeSql.Internal
             {
                 cscode.AppendLine("}");
                 Assembly assembly = null;
-                if (MethodLazyLoadingComplier.Value == null) throw new Exception(CoreStrings.Install_FreeSql_Extensions_LazyLoading);
+                if (MethodLazyLoadingComplier.Value == null) throw new Exception(CoreErrorStrings.Install_FreeSql_Extensions_LazyLoading);
                 try
                 {
                     assembly = MethodLazyLoadingComplier.Value.Invoke(null, new object[] { cscode.ToString() }) as Assembly;
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception(CoreStrings.LazyLoading_CompilationError(trytbTypeName, ex.Message, cscode));
+                    throw new Exception(CoreErrorStrings.LazyLoading_CompilationError(trytbTypeName, ex.Message, cscode));
                 }
                 var type = assembly.GetExportedTypes()/*.DefinedTypes*/.Where(a => a.FullName.EndsWith(trytbTypeLazyName)).FirstOrDefault();
                 trytb.TypeLazy = type;
@@ -228,7 +228,9 @@ namespace FreeSql.Internal
 			if (common.CodeFirst.IsSyncStructureToLower) colattr.Name = colattr.Name.ToLower();
 			if (common.CodeFirst.IsSyncStructureToUpper) colattr.Name = colattr.Name.ToUpper();
 
-			if ((colattr.IsNullable != true || colattr.IsIdentity == true || colattr.IsPrimary == true) && colattr.DbType.Contains("NOT NULL") == false && common._orm.Ado.DataType != DataType.ClickHouse)
+			if ((colattr.IsNullable != true || colattr.IsIdentity == true || colattr.IsPrimary == true) && colattr.DbType.Contains("NOT NULL") == false && 
+                common._orm.Ado.DataType != DataType.ClickHouse && 
+                common._orm.Ado.DataType != DataType.TDengine)
 			{
 				colattr.IsNullable = false;
 				colattr.DbType = Regex.Replace(colattr.DbType, @"\bNULL\b", "").Trim() + " NOT NULL";
@@ -313,7 +315,8 @@ namespace FreeSql.Internal
 					if (colType == typeof(int) || colType == typeof(uint))
 						colattr.DbType = "SERIAL";
 					else if (colType == typeof(long) || colType == typeof(ulong))
-						colattr.DbType = "SERIAL8";
+						colattr.DbType = colattr.DbType.IndexOf("BIGSERIAL", StringComparison.OrdinalIgnoreCase) != -1 ? 
+                            "BIGSERIAL" : "SERIAL8"; //#1919
 				}
 				if (colattr.MapType.NullableTypeOrThis() == typeof(DateTime))
 				{
@@ -396,6 +399,7 @@ namespace FreeSql.Internal
 					case DataType.CustomPostgreSQL:
 					case DataType.KingbaseES:
 					case DataType.ShenTong:
+                    case DataType.Xugu:
                         if (strlen < 0) colattr.DbType = $"TEXT{strNotNull}";
 						else colattr.DbType = Regex.Replace(colattr.DbType, charPattern, m =>
 							replaceCounter++ == 0 ? $"{m.Groups[1].Value}({strlen})" : m.Groups[0].Value);
@@ -423,6 +427,10 @@ namespace FreeSql.Internal
 						else colattr.DbType = Regex.Replace(colattr.DbType, charPattern, m =>
 							replaceCounter++ == 0 ? $"{m.Groups[1].Value}({strlen})" : m.Groups[0].Value);
 						break;
+                    case DataType.TDengine:
+                        colattr.DbType = Regex.Replace(colattr.DbType, charPattern, m =>
+                            replaceCounter++ == 0 ? $"{m.Groups[1].Value}({strlen})" : m.Groups[0].Value);
+                        break;
 					case DataType.MsAccess:
 						charPattern = @"(CHAR|CHAR2|CHARACTER|TEXT)\s*(\([^\)]*\))?";
 						if (strlen < 0) colattr.DbType = $"LONGTEXT{strNotNull}";
@@ -469,7 +477,8 @@ namespace FreeSql.Internal
 					case DataType.CustomPostgreSQL:
 					case DataType.KingbaseES:
 					case DataType.ShenTong: //驱动引发的异常:“System.Data.OscarClient.OscarException”(位于 System.Data.OscarClient.dll 中)
-						colattr.DbType = $"BYTEA{strNotNull}"; //变长二进制串
+                    case DataType.Xugu:
+                        colattr.DbType = $"BYTEA{strNotNull}"; //变长二进制串
 						break;
 					case DataType.Oracle:
 					case DataType.OdbcOracle:
@@ -503,8 +512,8 @@ namespace FreeSql.Internal
 				colattr.DbType = Regex.Replace(colattr.DbType, decimalPatten, $"$1({colattr.Precision},{colattr.Scale})");
 			}
 
-			if (trytb.Columns.ContainsKey(colattr.Name)) throw new Exception(CoreStrings.Duplicate_ColumnAttribute(colattr.Name));
-			if (trytb.ColumnsByCs.ContainsKey(csName)) throw new Exception(CoreStrings.Duplicate_PropertyName(csName));
+			if (trytb.Columns.ContainsKey(colattr.Name)) throw new Exception(CoreErrorStrings.Duplicate_ColumnAttribute(colattr.Name));
+			if (trytb.ColumnsByCs.ContainsKey(csName)) throw new Exception(CoreErrorStrings.Duplicate_PropertyName(csName));
 
             return col;
 		}
@@ -515,7 +524,7 @@ namespace FreeSql.Internal
 			{
 				if (trytb.VersionColumn.Attribute.MapType.IsNullableType() ||
 					trytb.VersionColumn.Attribute.MapType.IsNumberType() == false && !new[] { typeof(byte[]), typeof(string) }.Contains(trytb.VersionColumn.Attribute.MapType))
-					throw new Exception(CoreStrings.Properties_AsRowLock_Must_Numeric_Byte(trytb.VersionColumn.CsName));
+					throw new Exception(CoreErrorStrings.Properties_AsRowLock_Must_Numeric_Byte(trytb.VersionColumn.CsName));
 			}
 			tbattr?.ParseAsTable(trytb);
 
@@ -800,7 +809,7 @@ namespace FreeSql.Internal
                     {
                         if (locTb.ColumnsByCs.TryGetValue(bi, out var trybindcol) == false)
                         {
-                            nvref.Exception = new Exception(CoreStrings.Navigation_ParsingError_NotFound_Property(trytbTypeName, pnv.Name, locFindTypeName, bi));
+                            nvref.Exception = new Exception(CoreErrorStrings.Navigation_ParsingError_NotFound_Property(trytbTypeName, pnv.Name, locFindTypeName, bi));
                             trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                             //if (isLazy) throw nvref.Exception;
                             break;
@@ -820,7 +829,7 @@ namespace FreeSql.Internal
                     {
                         if (bindColumnsTempPrimary[a].CsType.NullableTypeOrThis() != bindColumns[a].CsType.NullableTypeOrThis())
                         {
-                            nvref.Exception = new Exception(CoreStrings.OneToMany_ParsingError_InconsistentType(trytbTypeName, pnv.Name, trytb.CsName, bindColumnsTempPrimary[a].CsName, tbref.CsName, bindColumns[a].CsName));
+                            nvref.Exception = new Exception(CoreErrorStrings.OneToMany_ParsingError_InconsistentType(trytbTypeName, pnv.Name, trytb.CsName, bindColumnsTempPrimary[a].CsName, tbref.CsName, bindColumns[a].CsName));
                             trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                             //if (isLazy) throw nvref.Exception;
                             break;
@@ -852,7 +861,7 @@ namespace FreeSql.Internal
                     {
                         if (bindColumns[a].CsType.NullableTypeOrThis() != bindColumnsTempPrimary[a].CsType.NullableTypeOrThis())
                         {
-                            nvref.Exception = new Exception(CoreStrings.Navigation_ParsingError_InconsistentType(trytbTypeName, pnv.Name, trytb.CsName, bindColumns[a].CsName, tbref.CsName, bindColumnsTempPrimary[a].CsName));
+                            nvref.Exception = new Exception(CoreErrorStrings.Navigation_ParsingError_InconsistentType(trytbTypeName, pnv.Name, trytb.CsName, bindColumns[a].CsName, tbref.CsName, bindColumnsTempPrimary[a].CsName));
                             trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                             //if (isLazy) throw nvref.Exception;
                             break;
@@ -883,7 +892,7 @@ namespace FreeSql.Internal
                 if (typeof(IEnumerable).IsAssignableFrom(pnv.PropertyType) == false) return;
                 if (trytb.Primarys.Any() == false)
                 {
-                    nvref.Exception = new Exception(CoreStrings.Navigation_ParsingError_EntityMissingPrimaryKey(trytbTypeName, pnv.Name, trytbTypeName));
+                    nvref.Exception = new Exception(CoreErrorStrings.Navigation_ParsingError_EntityMissingPrimaryKey(trytbTypeName, pnv.Name, trytbTypeName));
                     trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                     //if (isLazy) throw nvref.Exception;
                     return;
@@ -916,7 +925,7 @@ namespace FreeSql.Internal
 
                     if (isManyToMany == false)
                     {
-                        nvref.Exception = new Exception(CoreStrings.ManyToMany_ParsingError_EntityMustHas_NavigateCollection(trytbTypeName, pnv.Name, tbrefTypeName));
+                        nvref.Exception = new Exception(CoreErrorStrings.ManyToMany_ParsingError_EntityMustHas_NavigateCollection(trytbTypeName, pnv.Name, tbrefTypeName));
                         trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                         //if (isLazy) throw nvref.Exception;
                         return;
@@ -939,7 +948,7 @@ namespace FreeSql.Internal
                 {
                     if (tbref.Primarys.Any() == false)
                     {
-                        nvref.Exception = new Exception(CoreStrings.ManyToMany_ParsingError_EntityMissing_PrimaryKey(trytbTypeName, pnv.Name, tbrefTypeName));
+                        nvref.Exception = new Exception(CoreErrorStrings.ManyToMany_ParsingError_EntityMissing_PrimaryKey(trytbTypeName, pnv.Name, tbrefTypeName));
                         trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                         //if (isLazy) throw nvref.Exception;
                         return;
@@ -994,6 +1003,7 @@ namespace FreeSql.Internal
                     var midTypePropsTrytb = tbmid.Properties.Where(a => a.Value.PropertyType == trytb.Type).FirstOrDefault().Value;
                     //g.mysql.Select<Tag>().Where(a => g.mysql.Select<Song_tag>().Where(b => b.Tag_id == a.Id && b.Song_id == 1).Any());
                     var lmbdWhere = isLazy ? new StringBuilder() : null;
+                    var minPkCols = new List<ColumnInfo>();
 
                     if (pnvAttr?.ManyToMany != null)
                     {
@@ -1010,7 +1020,7 @@ namespace FreeSql.Internal
                         }
                         catch (Exception ex)
                         {
-                            nvref.Exception = new Exception(CoreStrings.ManyToMany_ParsingError_IntermediateClass_ErrorMessage(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTrytb.Name, ex.Message));
+                            nvref.Exception = new Exception(CoreErrorStrings.ManyToMany_ParsingError_IntermediateClass_ErrorMessage(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTrytb.Name, ex.Message));
                             trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                             //if (isLazy) throw nvref.Exception;
                         }
@@ -1018,7 +1028,7 @@ namespace FreeSql.Internal
                         {
                             if (trytbTf.RefType != TableRefType.ManyToOne && trytbTf.RefType != TableRefType.OneToOne)
                             {
-                                nvref.Exception = new Exception(CoreStrings.ManyToMany_ParsingError_IntermediateClass_NotManyToOne_OneToOne(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTrytb.Name));
+                                nvref.Exception = new Exception(CoreErrorStrings.ManyToMany_ParsingError_IntermediateClass_NotManyToOne_OneToOne(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTrytb.Name));
                                 trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                                 //if (isLazy) throw nvref.Exception;
                             }
@@ -1030,6 +1040,8 @@ namespace FreeSql.Internal
                                 if (tbmid.Primarys.Any() == false)
                                     foreach (var c in trytbTf.Columns)
                                         tbmid.ColumnsByCs[c.CsName].Attribute.IsPrimary = true;
+                                else
+                                    minPkCols.AddRange(trytbTf.Columns);
 
                                 if (isLazy)
                                 {
@@ -1057,7 +1069,7 @@ namespace FreeSql.Internal
                             }
                             catch (Exception ex)
                             {
-                                nvref.Exception = new Exception(CoreStrings.ManyToMany_ParsingError_IntermediateClass_ErrorMessage(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTbref.Name, ex.Message));
+                                nvref.Exception = new Exception(CoreErrorStrings.ManyToMany_ParsingError_IntermediateClass_ErrorMessage(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTbref.Name, ex.Message));
                                 trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                                 //if (isLazy) throw nvref.Exception;
                             }
@@ -1065,7 +1077,7 @@ namespace FreeSql.Internal
                             {
                                 if (tbrefTf.RefType != TableRefType.ManyToOne && tbrefTf.RefType != TableRefType.OneToOne)
                                 {
-                                    nvref.Exception = new Exception(CoreStrings.ManyToMany_ParsingError_IntermediateClass_NotManyToOne_OneToOne(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTbref.Name));
+                                    nvref.Exception = new Exception(CoreErrorStrings.ManyToMany_ParsingError_IntermediateClass_NotManyToOne_OneToOne(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTbref.Name));
                                     trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                                     //if (isLazy) throw nvref.Exception;
                                 }
@@ -1077,6 +1089,8 @@ namespace FreeSql.Internal
                                     if (tbmid.Primarys.Any() == false)
                                         foreach (var c in tbrefTf.Columns)
                                             tbmid.ColumnsByCs[c.CsName].Attribute.IsPrimary = true;
+                                    else
+                                        minPkCols.AddRange(tbrefTf.Columns);
 
                                     if (isLazy)
                                     {
@@ -1103,14 +1117,14 @@ namespace FreeSql.Internal
                             }
                             if (trycol != null && trycol.CsType.NullableTypeOrThis() != trytb.Primarys[a].CsType.NullableTypeOrThis())
                             {
-                                nvref.Exception = new Exception(CoreStrings.ManyToMany_ParsingError_InconsistentType(trytbTypeName, pnv.Name, tbmid.CsName, trycol.CsName, trytb.CsName, trytb.Primarys[a].CsName));
+                                nvref.Exception = new Exception(CoreErrorStrings.ManyToMany_ParsingError_InconsistentType(trytbTypeName, pnv.Name, tbmid.CsName, trycol.CsName, trytb.CsName, trytb.Primarys[a].CsName));
                                 trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                                 //if (isLazy) throw nvref.Exception;
                                 break;
                             }
                             if (trycol == null)
                             {
-                                nvref.Exception = new Exception(CoreStrings.ManyToMany_NotFound_CorrespondingField(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTrytb.Name, findtrytbPkCsName));
+                                nvref.Exception = new Exception(CoreErrorStrings.ManyToMany_NotFound_CorrespondingField(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTrytb.Name, findtrytbPkCsName));
                                 trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                                 //if (isLazy) throw nvref.Exception;
                                 break;
@@ -1120,6 +1134,8 @@ namespace FreeSql.Internal
                             nvref.MiddleColumns.Add(trycol);
                             if (tbmid.Primarys.Any() == false)
                                 trycol.Attribute.IsPrimary = true;
+                            else
+                                minPkCols.Add(trycol);
 
                             if (isLazy)
                             {
@@ -1143,14 +1159,14 @@ namespace FreeSql.Internal
                                 }
                                 if (trycol != null && trycol.CsType.NullableTypeOrThis() != tbref.Primarys[a].CsType.NullableTypeOrThis())
                                 {
-                                    nvref.Exception = new Exception(CoreStrings.ManyToMany_ParsingError_InconsistentType(trytbTypeName, pnv.Name, tbmid.CsName, trycol.CsName, trytb.CsName, trytb.Primarys[a].CsName));
+                                    nvref.Exception = new Exception(CoreErrorStrings.ManyToMany_ParsingError_InconsistentType(trytbTypeName, pnv.Name, tbmid.CsName, trycol.CsName, trytb.CsName, trytb.Primarys[a].CsName));
                                     trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                                     //if (isLazy) throw nvref.Exception;
                                     break;
                                 }
                                 if (trycol == null)
                                 {
-                                    nvref.Exception = new Exception(CoreStrings.ManyToMany_NotFound_CorrespondingField(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTrytb.Name, findtbrefPkCsName));
+                                    nvref.Exception = new Exception(CoreErrorStrings.ManyToMany_NotFound_CorrespondingField(trytbTypeName, pnv.Name, tbmid.CsName, midTypePropsTrytb.Name, findtbrefPkCsName));
                                     trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                                     //if (isLazy) throw nvref.Exception;
                                     break;
@@ -1160,6 +1176,8 @@ namespace FreeSql.Internal
                                 nvref.MiddleColumns.Add(trycol);
                                 if (tbmid.Primarys.Any() == false)
                                     trycol.Attribute.IsPrimary = true;
+                                else
+                                    minPkCols.Add(trycol);
 
                                 if (isLazy) lmbdWhere.Append(" && b.").Append(trycol.CsName).Append(" == a.").Append(tbref.Primarys[a].CsName);
                             }
@@ -1187,6 +1205,11 @@ namespace FreeSql.Internal
                                         break;
                                 }
                             }
+                        }
+                        else if(minPkCols.Any(c => tbmid.ColumnsByCs[c.CsName].Attribute.IsPrimary == false)) 
+                        {
+                            nvref.Exception = new Exception($"导航属性 {trytbTypeName}.{pnv.Name} 解析错误，中间类主键错误：{midType.Name}({string.Join(",", tbmid.Primarys.Select(a => a.CsName))}) 与两边不匹配");
+                            trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                         }
                     }
 
@@ -1356,7 +1379,7 @@ namespace FreeSql.Internal
                             {
                                 if (tbref.ColumnsByCs.TryGetValue(bi, out var trybindcol) == false)
                                 {
-                                    nvref.Exception = new Exception(CoreStrings.Navigation_ParsingError_NotFound_Property(trytbTypeName, pnv.Name, tbrefTypeName, bi));
+                                    nvref.Exception = new Exception(CoreErrorStrings.Navigation_ParsingError_NotFound_Property(trytbTypeName, pnv.Name, tbrefTypeName, bi));
                                     trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                                     //if (isLazy) throw nvref.Exception;
                                     break;
@@ -1370,7 +1393,7 @@ namespace FreeSql.Internal
 
                         if (nvref.Exception == null && bindColumns.Any() && bindColumns.Count != trytb.Primarys.Length)
                         {
-                            nvref.Exception = new Exception(CoreStrings.Navigation_Bind_Number_Different(trytbTypeName, pnv.Name, bindColumns.Count, trytb.Primarys.Length));
+                            nvref.Exception = new Exception(CoreErrorStrings.Navigation_Bind_Number_Different(trytbTypeName, pnv.Name, bindColumns.Count, trytb.Primarys.Length));
                             trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                             //if (isLazy) throw nvref.Exception;
                         }
@@ -1410,15 +1433,15 @@ namespace FreeSql.Internal
                             }
                             if (trycol != null && trycol.CsType.NullableTypeOrThis() != trytb.Primarys[a].CsType.NullableTypeOrThis())
                             {
-                                nvref.Exception = new Exception(CoreStrings.OneToMany_ParsingError_InconsistentType(trytbTypeName, pnv.Name, trytb.CsName, trytb.Primarys[a].CsName, tbref.CsName, trycol.CsName));
+                                nvref.Exception = new Exception(CoreErrorStrings.OneToMany_ParsingError_InconsistentType(trytbTypeName, pnv.Name, trytb.CsName, trytb.Primarys[a].CsName, tbref.CsName, trycol.CsName));
                                 trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                                 //if (isLazy) throw nvref.Exception;
                                 break;
                             }
                             if (trycol == null)
                             {
-                                nvref.Exception = new Exception(CoreStrings.OneToMany_NotFound_CorrespondingField(trytbTypeName, pnv.Name, tbref.CsName, findtrytb, findtrytbPkCsName)
-                                    + (refprop == null ? "" : CoreStrings.OneToMany_UseNavigate(refprop.Name, findtrytbPkCsName)));
+                                nvref.Exception = new Exception(CoreErrorStrings.OneToMany_NotFound_CorrespondingField(trytbTypeName, pnv.Name, tbref.CsName, findtrytb, findtrytbPkCsName)
+                                    + (refprop == null ? "" : CoreErrorStrings.OneToMany_UseNavigate(refprop.Name, findtrytbPkCsName)));
                                 trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                                 //if (isLazy) throw nvref.Exception;
                                 break;
@@ -1462,7 +1485,7 @@ namespace FreeSql.Internal
                 if (tbref == null) return;
                 if (tbref.Primarys.Any() == false)
                 {
-                    nvref.Exception = new Exception(CoreStrings.Navigation_ParsingError_EntityMissingPrimaryKey(trytbTypeName, pnv.Name, propTypeName));
+                    nvref.Exception = new Exception(CoreErrorStrings.Navigation_ParsingError_EntityMissingPrimaryKey(trytbTypeName, pnv.Name, propTypeName));
                     trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                     //if (isLazy) throw nvref.Exception;
                 }
@@ -1479,7 +1502,7 @@ namespace FreeSql.Internal
                     {
                         if (trytb.ColumnsByCs.TryGetValue(bi, out var trybindcol) == false)
                         {
-                            nvref.Exception = new Exception(CoreStrings.Navigation_ParsingError_NotFound_Property(trytbTypeName, pnv.Name, trytbTypeName, bi));
+                            nvref.Exception = new Exception(CoreErrorStrings.Navigation_ParsingError_NotFound_Property(trytbTypeName, pnv.Name, trytbTypeName, bi));
                             trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                             //if (isLazy) throw nvref.Exception;
                             break;
@@ -1491,7 +1514,7 @@ namespace FreeSql.Internal
 
                 if (nvref.Exception == null && bindColumns.Any() && bindColumns.Count != tbref.Primarys.Length)
                 {
-                    nvref.Exception = new Exception(CoreStrings.Navigation_Bind_Number_Different(trytbTypeName, pnv.Name, bindColumns.Count, tbref.Primarys.Length));
+                    nvref.Exception = new Exception(CoreErrorStrings.Navigation_Bind_Number_Different(trytbTypeName, pnv.Name, bindColumns.Count, tbref.Primarys.Length));
                     trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                     //if (isLazy) throw nvref.Exception;
                 }
@@ -1546,14 +1569,14 @@ namespace FreeSql.Internal
                     }
                     if (trycol != null && trycol.CsType.NullableTypeOrThis() != tbref.Primarys[a].CsType.NullableTypeOrThis())
                     {
-                        nvref.Exception = new Exception(CoreStrings.Navigation_ParsingError_InconsistentType(trytbTypeName, pnv.Name, trytb.CsName, trycol.CsName, tbref.CsName, tbref.Primarys[a].CsName));
+                        nvref.Exception = new Exception(CoreErrorStrings.Navigation_ParsingError_InconsistentType(trytbTypeName, pnv.Name, trytb.CsName, trycol.CsName, tbref.CsName, tbref.Primarys[a].CsName));
                         trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                         //if (isLazy) throw nvref.Exception;
                         break;
                     }
                     if (trycol == null)
                     {
-                        nvref.Exception = new Exception(CoreStrings.Navigation_NotFound_CorrespondingField(trytbTypeName, pnv.Name, findtbrefPkCsName));
+                        nvref.Exception = new Exception(CoreErrorStrings.Navigation_NotFound_CorrespondingField(trytbTypeName, pnv.Name, findtbrefPkCsName));
                         trytb.AddOrUpdateTableRef(pnv.Name, nvref);
                         //if (isLazy) throw nvref.Exception;
                         break;
@@ -1718,10 +1741,12 @@ namespace FreeSql.Internal
                     break;
                 case DataType.MySql:
                 case DataType.CustomMySql:
-                    if (dr.GetFieldType(index).FullName == "MySqlConnector.MySqlDateTime")
+                    switch (dr.GetFieldType(index).FullName)
                     {
-                        if (dr.IsDBNull(index)) return null;
-                        return dr.GetDateTime(index);
+                        case "MySql.Data.Types.MySqlDateTime": //Allow Zero Datetime=True;
+                        case "MySqlConnector.MySqlDateTime":
+                            if (dr.IsDBNull(index)) return null;
+                            return dr.GetDateTime(index);
                     }
                     break;
             }
@@ -2121,7 +2146,7 @@ namespace FreeSql.Internal
                 var parmValue = Expression.Parameter(typeof(object), "value");
                 Expression exp = Expression.Convert(parmInfo, typeObj);
                 foreach (var pro in memberAccessPath.Split('.'))
-                    exp = Expression.PropertyOrField(exp, pro) ?? throw new Exception(string.Concat(exp.Type.FullName, CoreStrings.NoProperty_Defined, pro));
+                    exp = Expression.PropertyOrField(exp, pro) ?? throw new Exception(string.Concat(exp.Type.FullName, CoreErrorStrings.NoProperty_Defined, pro));
 
                 var value2 = Expression.Call(MethodGetDataReaderValue, Expression.Constant(exp.Type), parmValue);
                 var value3 = Expression.Convert(parmValue, typeValue);
@@ -2376,6 +2401,7 @@ namespace FreeSql.Internal
                 Expression tryparseExp = null;
                 Expression tryparseBooleanExp = null;
                 ParameterExpression tryparseVarExp = null;
+                ParameterExpression tryparseVarExpDecimal = null;
                 switch (type.FullName)
                 {
                     case "System.Guid":
@@ -2420,7 +2446,7 @@ namespace FreeSql.Internal
                                 Expression.Return(returnTarget, Expression.Convert(Expression.Call(MethodTimeSpanFromSeconds, tryparseVarDblExp), typeof(object))),
                                 Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
                             );
-                        if (TypeTimeOnly != null) timeSpanExp = Expression.IfThenElse(
+                        if (TypeTimeOnly != null && MethodTimeOnlyToTimeSpan != null) timeSpanExp = Expression.IfThenElse(
                                 Expression.TypeIs(valueExp, TypeTimeOnly),
                                 Expression.Return(returnTarget, Expression.Convert(Expression.Call(Expression.Convert(valueExp, TypeTimeOnly), MethodTimeOnlyToTimeSpan), typeof(object))),
                                 timeSpanExp
@@ -2462,7 +2488,7 @@ namespace FreeSql.Internal
                                 Expression.Return(returnTarget, Expression.Convert(Expression.MakeMemberAccess(Expression.Convert(valueExp, typeof(DateTimeOffset)), PropertyDateTimeOffsetDateTime), typeof(object))),
                                 Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
                             );
-                        if (TypeDateOnly != null) dateTimeExp = Expression.IfThenElse(
+                        if (TypeDateOnly != null && MethodDateOnlyToDateTime != null) dateTimeExp = Expression.IfThenElse(
                                 Expression.TypeIs(valueExp, TypeDateOnly),
                                 Expression.Return(returnTarget, Expression.Convert(Expression.Call(Expression.Convert(valueExp, TypeDateOnly), MethodDateOnlyToDateTime, Expression.Constant(TypeTimeOnly.CreateInstanceGetDefaultValue(), TypeTimeOnly)), typeof(object))),
                                 dateTimeExp
@@ -2522,36 +2548,48 @@ namespace FreeSql.Internal
                         break;
                     case "System.Int16":
                         tryparseExp = Expression.Block(
-                              new[] { tryparseVarExp = Expression.Variable(typeof(short)) },
+                              new[] { tryparseVarExp = Expression.Variable(typeof(short)), tryparseVarExpDecimal = Expression.Variable(typeof(decimal)) },
                                new Expression[] {
                                 Expression.IfThenElse(
                                     Expression.IsTrue(Expression.Call(MethodShortTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExp)),
                                     Expression.Return(returnTarget, Expression.Convert(tryparseVarExp, typeof(object))),
-                                    Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    Expression.IfThenElse(
+                                        Expression.IsTrue(Expression.Call(MethodDecimalTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExpDecimal)),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Convert(tryparseVarExpDecimal, tryparseVarExp.Type), typeof(object))),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    )
                                 )
                                }
                            );
                         break;
                     case "System.Int32":
                         tryparseExp = Expression.Block(
-                              new[] { tryparseVarExp = Expression.Variable(typeof(int)) },
+                              new[] { tryparseVarExp = Expression.Variable(typeof(int)), tryparseVarExpDecimal = Expression.Variable(typeof(decimal)) },
                                new Expression[] {
                                 Expression.IfThenElse(
                                     Expression.IsTrue(Expression.Call(MethodIntTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExp)),
                                     Expression.Return(returnTarget, Expression.Convert(tryparseVarExp, typeof(object))),
-                                    Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    Expression.IfThenElse(
+                                        Expression.IsTrue(Expression.Call(MethodDecimalTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExpDecimal)),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Convert(tryparseVarExpDecimal, tryparseVarExp.Type), typeof(object))),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    )
                                 )
                                }
                            );
                         break;
                     case "System.Int64":
                         tryparseExp = Expression.Block(
-                              new[] { tryparseVarExp = Expression.Variable(typeof(long)) },
+                              new[] { tryparseVarExp = Expression.Variable(typeof(long)), tryparseVarExpDecimal = Expression.Variable(typeof(decimal)) },
                                new Expression[] {
                                 Expression.IfThenElse(
                                     Expression.IsTrue(Expression.Call(MethodLongTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExp)),
                                     Expression.Return(returnTarget, Expression.Convert(tryparseVarExp, typeof(object))),
-                                    Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    Expression.IfThenElse(
+                                        Expression.IsTrue(Expression.Call(MethodDecimalTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExpDecimal)),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Convert(tryparseVarExpDecimal, tryparseVarExp.Type), typeof(object))),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    )
                                 )
                                }
                            );
@@ -2570,36 +2608,48 @@ namespace FreeSql.Internal
                         break;
                     case "System.UInt16":
                         tryparseExp = Expression.Block(
-                               new[] { tryparseVarExp = Expression.Variable(typeof(ushort)) },
+                               new[] { tryparseVarExp = Expression.Variable(typeof(ushort)), tryparseVarExpDecimal = Expression.Variable(typeof(decimal)) },
                                new Expression[] {
                                 Expression.IfThenElse(
                                     Expression.IsTrue(Expression.Call(MethodUShortTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExp)),
                                     Expression.Return(returnTarget, Expression.Convert(tryparseVarExp, typeof(object))),
-                                    Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    Expression.IfThenElse(
+                                        Expression.IsTrue(Expression.Call(MethodDecimalTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExpDecimal)),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Convert(tryparseVarExpDecimal, tryparseVarExp.Type), typeof(object))),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    )
                                 )
                                }
                            );
                         break;
                     case "System.UInt32":
                         tryparseExp = Expression.Block(
-                               new[] { tryparseVarExp = Expression.Variable(typeof(uint)) },
+                               new[] { tryparseVarExp = Expression.Variable(typeof(uint)), tryparseVarExpDecimal = Expression.Variable(typeof(decimal)) },
                                new Expression[] {
                                 Expression.IfThenElse(
                                     Expression.IsTrue(Expression.Call(MethodUIntTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExp)),
                                     Expression.Return(returnTarget, Expression.Convert(tryparseVarExp, typeof(object))),
-                                    Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    Expression.IfThenElse(
+                                        Expression.IsTrue(Expression.Call(MethodDecimalTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExpDecimal)),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Convert(tryparseVarExpDecimal, tryparseVarExp.Type), typeof(object))),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    )
                                 )
                                }
                            );
                         break;
                     case "System.UInt64":
                         tryparseExp = Expression.Block(
-                              new[] { tryparseVarExp = Expression.Variable(typeof(ulong)) },
+                              new[] { tryparseVarExp = Expression.Variable(typeof(ulong)), tryparseVarExpDecimal = Expression.Variable(typeof(decimal)) },
                                new Expression[] {
                                 Expression.IfThenElse(
                                     Expression.IsTrue(Expression.Call(MethodULongTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExp)),
                                     Expression.Return(returnTarget, Expression.Convert(tryparseVarExp, typeof(object))),
-                                    Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    Expression.IfThenElse(
+                                        Expression.IsTrue(Expression.Call(MethodDecimalTryParse, Expression.Convert(valueExp, typeof(string)), Expression.Constant(System.Globalization.NumberStyles.Any), Expression.Constant(null, typeof(IFormatProvider)), tryparseVarExpDecimal)),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Convert(tryparseVarExpDecimal, tryparseVarExp.Type), typeof(object))),
+                                        Expression.Return(returnTarget, Expression.Convert(Expression.Default(typeOrg), typeof(object)))
+                                    )
                                 )
                                }
                            );
@@ -2761,7 +2811,7 @@ namespace FreeSql.Internal
             }
             catch (Exception ex)
             {
-                throw new ArgumentException(CoreStrings.ExpressionTree_Convert_Type_Error(string.Concat(value), value.GetType().FullName, type.FullName, ex.Message));
+                throw new ArgumentException(CoreErrorStrings.ExpressionTree_Convert_Type_Error(string.Concat(value), value.GetType().FullName, type.FullName, ex.Message));
             }
         }
         public static string GetCsName(string name)

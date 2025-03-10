@@ -254,7 +254,7 @@ namespace FreeSql.Dameng
                             return _common.StringConcat(concatNewArrExp.Expressions.Select(a => getExp(a)).ToArray(), null);
                         return _common.StringConcat(exp.Arguments.Select(a => getExp(a)).ToArray(), null);
                     case "Format":
-                        if (exp.Arguments[0].NodeType != ExpressionType.Constant) throw new Exception(CoreStrings.Not_Implemented_Expression_ParameterUseConstant(exp,exp.Arguments[0]));
+                        if (exp.Arguments[0].NodeType != ExpressionType.Constant) throw new Exception(CoreErrorStrings.Not_Implemented_Expression_ParameterUseConstant(exp,exp.Arguments[0]));
                         var expArgsHack = exp.Arguments.Count == 2 && exp.Arguments[1].NodeType == ExpressionType.NewArrayInit ?
                             (exp.Arguments[1] as NewArrayExpression).Expressions : exp.Arguments.Where((a, z) => z > 0);
                         //3个 {} 时，Arguments 解析出来是分开的
@@ -384,6 +384,19 @@ namespace FreeSql.Dameng
             }
             return null;
         }
+        public override string ExpressionLambdaToSqlCallDateDiff(string memberName, Expression date1, Expression date2, ExpTSC tsc)
+        {
+            Func<Expression, string> getExp = exparg => ExpressionLambdaToSql(exparg, tsc);
+            switch (memberName)
+            {
+                case "TotalDays": return $"DATEDIFF(Day, {getExp(date2)}, {getExp(date1)})";
+                case "TotalHours": return $"DATEDIFF(Hour, {getExp(date2)}, {getExp(date1)})";
+                case "TotalMilliseconds": return $"DATEDIFF(MS, {getExp(date2)}, {getExp(date1)})";
+                case "TotalMinutes": return $"DATEDIFF(Minute, {getExp(date2)}, {getExp(date1)})";
+                case "TotalSeconds": return $"DATEDIFF(Second, {getExp(date2)}, {getExp(date1)})";
+            }
+            return null;
+        }
         public override string ExpressionLambdaToSqlCallDateTime(MethodCallExpression exp, ExpTSC tsc)
         {
             Func<Expression, string> getExp = exparg => ExpressionLambdaToSql(exparg, tsc);
@@ -422,8 +435,8 @@ namespace FreeSql.Dameng
                     case "Subtract":
                         switch ((exp.Arguments[0].Type.IsNullableType() ? exp.Arguments[0].Type.GetGenericArguments().FirstOrDefault() : exp.Arguments[0].Type).FullName)
                         {
-                            case "System.DateTime": return $"(cast({left} as timestamp with time zone)-{args1})";
-                            case "System.TimeSpan": return $"({left}-{args1})";
+                            //case "System.DateTime": return $"((cast({left} as timestamp with time zone)-{args1})*{24 * 60 * 60})";
+                            case "System.DateTime": return $"DATEDIFF(Second, {args1}, {left})";
                         }
                         break;
                     case "Equals": return $"({left} = {args1})";

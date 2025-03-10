@@ -9,11 +9,11 @@ using FreeSql.Internal.Model;
 using FreeSql.Odbc.Default;
 using MessagePack;
 using Microsoft.Data.SqlClient;
-using MySqlConnector;
 using NetTopologySuite.Geometries;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Npgsql;
+using Org.BouncyCastle.Tls;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -523,6 +523,8 @@ namespace base_entity
 
         static void Main(string[] args)
         {
+            var ddultval = typeof(System.Text.Json.Nodes.JsonArray).CreateInstanceGetDefaultValue();
+
             var pams = new Dictionary<string, string>();
             var sql2rscs = Utils.ReplaceSqlConstString("'', 'SARTEN ACERO VITR.18CM''''GRAFIT''''', 'a",
                 pams, "@lantin1");
@@ -574,39 +576,39 @@ namespace base_entity
                 //.UseSlaveWeight(10, 1, 1, 5)
 
 
-                //.UseConnectionString(FreeSql.DataType.Firebird, @"database=localhost:D:\fbdata\EXAMPLES.fdb;user=sysdba;password=123456;max pool size=5")
+                .UseConnectionString(FreeSql.DataType.Firebird, @"database=localhost:D:\fbdata\EXAMPLES.fdb;user=sysdba;password=123456;max pool size=5")
                 //.UseQuoteSqlName(false)
 
-                //.UseConnectionString(FreeSql.DataType.MySql, "Data Source=127.0.0.1;Port=3306;User ID=root;Password=root;Initial Catalog=cccddd;Charset=utf8;SslMode=none;min pool size=1;Max pool size=3;AllowLoadLocalInfile=true")
+                .UseConnectionString(FreeSql.DataType.MySql, "Data Source=127.0.0.1;Port=3306;User ID=root;Password=root;Initial Catalog=cccddd;Charset=utf8;SslMode=none;min pool size=1;Max pool size=3;AllowLoadLocalInfile=true")
 
-				//.UseConnectionString(FreeSql.DataType.SqlServer, "Data Source=.;Integrated Security=True;Initial Catalog=freesqlTest;Pooling=true;Max Pool Size=3;TrustServerCertificate=true")
-				//.UseAdoConnectionPool(false)
-				//.UseConnectionString(FreeSql.DataType.PostgreSQL, "Host=127.0.0.1;Port=5432;Username=postgres;Password=123456;Database=tedb;Pooling=true;Maximum Pool Size=2")
-				////.UseConnectionString(FreeSql.DataType.PostgreSQL, "Host=127.0.0.1;Port=5432;Username=postgres;Password=123456;Database=toc;Pooling=true;Maximum Pool Size=2")
-				//.UseNameConvert(FreeSql.Internal.NameConvertType.ToLower)
+                //.UseConnectionString(FreeSql.DataType.SqlServer, "Data Source=.;Integrated Security=True;Initial Catalog=freesqlTest;Pooling=true;Max Pool Size=3;TrustServerCertificate=true")
+                //.UseAdoConnectionPool(false)
+                //.UseConnectionString(FreeSql.DataType.PostgreSQL, "Host=127.0.0.1;Port=5432;Username=postgres;Password=123456;Database=tedb;Pooling=true;Maximum Pool Size=2")
+                ////.UseConnectionString(FreeSql.DataType.PostgreSQL, "Host=127.0.0.1;Port=5432;Username=postgres;Password=123456;Database=toc;Pooling=true;Maximum Pool Size=2")
+                //.UseNameConvert(FreeSql.Internal.NameConvertType.ToLower)
 
-				//.UseConnectionString(FreeSql.DataType.Oracle, "user id=user1;password=123456;data source=//127.0.0.1:1521/XE;Pooling=true;Max Pool Size=2")
-				//.UseNameConvert(FreeSql.Internal.NameConvertType.ToUpper)
+                //.UseConnectionString(FreeSql.DataType.Oracle, "user id=user1;password=123456;data source=//127.0.0.1:1521/XE;Pooling=true;Max Pool Size=2")
+                //.UseNameConvert(FreeSql.Internal.NameConvertType.ToUpper)
 
-				//.UseConnectionString(FreeSql.DataType.Dameng, "server=127.0.0.1;port=5236;user=2user;password=123456789;database=2user;poolsize=5;")
-				//.UseNameConvert(FreeSql.Internal.NameConvertType.ToUpper)
+                //.UseConnectionString(FreeSql.DataType.Dameng, "server=127.0.0.1;port=5236;user=2user;password=123456789;database=2user;poolsize=5;")
+                //.UseNameConvert(FreeSql.Internal.NameConvertType.ToUpper)
 
-				//.UseConnectionString(FreeSql.DataType.OdbcMySql, "Driver={MySQL ODBC 8.0 Unicode Driver};Server=127.0.0.1;Persist Security Info=False;Trusted_Connection=Yes;UID=root;PWD=root;DATABASE=cccddd_odbc;Charset=utf8;SslMode=none;Max pool size=2")
+                //.UseConnectionString(FreeSql.DataType.OdbcMySql, "Driver={MySQL ODBC 8.0 Unicode Driver};Server=127.0.0.1;Persist Security Info=False;Trusted_Connection=Yes;UID=root;PWD=root;DATABASE=cccddd_odbc;Charset=utf8;SslMode=none;Max pool size=2")
 
-				//.UseConnectionString(FreeSql.DataType.OdbcSqlServer, "Driver={SQL Server};Server=.;Persist Security Info=False;Trusted_Connection=Yes;Integrated Security=True;DATABASE=freesqlTest_odbc;Pooling=true;Max pool size=3")
+                //.UseConnectionString(FreeSql.DataType.OdbcSqlServer, "Driver={SQL Server};Server=.;Persist Security Info=False;Trusted_Connection=Yes;Integrated Security=True;DATABASE=freesqlTest_odbc;Pooling=true;Max pool size=3")
 
-				//.UseConnectionString(FreeSql.DataType.OdbcPostgreSQL, "Driver={PostgreSQL Unicode(x64)};Server=127.0.0.1;Port=5432;UID=postgres;PWD=123456;Database=tedb_odbc;Pooling=true;Maximum Pool Size=2")
-				//.UseNameConvert(FreeSql.Internal.NameConvertType.ToLower)
+                //.UseConnectionString(FreeSql.DataType.OdbcPostgreSQL, "Driver={PostgreSQL Unicode(x64)};Server=127.0.0.1;Port=5432;UID=postgres;PWD=123456;Database=tedb_odbc;Pooling=true;Maximum Pool Size=2")
+                //.UseNameConvert(FreeSql.Internal.NameConvertType.ToLower)
 
-				//.UseConnectionString(FreeSql.DataType.OdbcOracle, "Driver={Oracle in XE};Server=//127.0.0.1:1521/XE;Persist Security Info=False;Trusted_Connection=Yes;UID=odbc1;PWD=123456")
-				//.UseNameConvert(FreeSql.Internal.NameConvertType.ToUpper)
+                //.UseConnectionString(FreeSql.DataType.OdbcOracle, "Driver={Oracle in XE};Server=//127.0.0.1:1521/XE;Persist Security Info=False;Trusted_Connection=Yes;UID=odbc1;PWD=123456")
+                //.UseNameConvert(FreeSql.Internal.NameConvertType.ToUpper)
 
-				//.UseConnectionString(FreeSql.DataType.OdbcDameng, "Driver={DM8 ODBC DRIVER};Server=127.0.0.1:5236;Persist Security Info=False;Trusted_Connection=Yes;UID=USER1;PWD=123456789")
-				//.UseConnectionString(DataType.QuestDb, "host=localhost;port=8812;username=admin;password=quest;database=qdb;ServerCompatibilityMode=NoTypeLoading;")
+                //.UseConnectionString(FreeSql.DataType.OdbcDameng, "Driver={DM8 ODBC DRIVER};Server=127.0.0.1:5236;Persist Security Info=False;Trusted_Connection=Yes;UID=USER1;PWD=123456789")
+                //.UseConnectionString(DataType.QuestDb, "host=localhost;port=8812;username=admin;password=quest;database=qdb;ServerCompatibilityMode=NoTypeLoading;")
 
-				//.UseConnectionString(DataType.ClickHouse, "DataCompress=False;BufferSize=32768;SocketTimeout=10000;CheckCompressedHash=False;Encrypt=False;Compressor=lz4;Host=192.168.0.121;Port=8125;Database=PersonnelLocation;Username=root;Password=123")
+                //.UseConnectionString(DataType.ClickHouse, "DataCompress=False;BufferSize=32768;SocketTimeout=10000;CheckCompressedHash=False;Encrypt=False;Compressor=lz4;Host=192.168.0.121;Port=8125;Database=PersonnelLocation;Username=root;Password=123")
                 //.UseConnectionFactory(DataType.ClickHouse, () => null)
-				.UseMonitorCommand(cmd =>
+                .UseMonitorCommand(cmd =>
                 {
                     Console.WriteLine(cmd.CommandText + "\r\n");
                     //cmd.CommandText = null; //不执行
@@ -618,6 +620,159 @@ namespace base_entity
                 .Build();
             BaseEntity.Initialization(fsql, () => _asyncUow.Value);
             #endregion
+
+            var sql20250205 = fsql.Select<OrderLine, Product>()
+                .InnerJoin((l, p) => l.ProductId == p.ID)
+                .GroupBy((l, p) => new { p.ID, ShopType = l.ShopType ?? 0 })
+                .ToSql(x => new
+                {
+                    TradeId = x.Key.ID,
+                    ShopType = x.Key.ShopType,
+                    FieldCount = x.CountDistinct(x.Value.Item2.ID),
+                    Count = x.Count(x.Value.Item1.Id),
+                    Kb = (long)x.Sum(x.Value.Item1.Amount)
+                });
+
+            var res = fsql.Select<MemberActionDayCountModel>()
+                .Where(x => x.Date >= 20230101 && x.Date < 20240101 && x.ScanCode > 0)
+                .Where(x =>
+                    fsql.Select<MemberActionDayCountModel>()
+                        .Where(a => a.Date >= 20220101 && a.Date < 20230101 && a.ScanCode > 0)
+                        .Distinct()
+                        .ToList(a => a.MemberId)
+                        .Contains(x.MemberId)
+                )
+                .ToAggregateAsync(x => new
+                {
+                    MemberCount = x.Count(),
+                    ScanSum = x.Sum(x.Key.ScanCode)
+                });
+
+            var p_0 = "x1";
+            var p_0r1 = fsql.Select<User1>().Where(a => a.Nickname == p_0)
+                .GroupBy(a => a.GroupId)
+                .WithTempQuery(a => new
+                {
+                    GroupId = a.Key,
+                    Sum = fsql.Select<UserGroup>()
+                    .Where(b => b.Id == a.Key && b.GroupName == p_0)
+                    .Sum(b => b.Id)
+                })
+                .ToList();
+
+            fsql.Delete<RequestEntity>().Where("1=1").ExecuteAffrows();
+            fsql.Delete<RequestDetailEntity>().Where("1=1").ExecuteAffrows();
+            fsql.Insert(new RequestEntity
+            {
+                ID = 21968,
+                AddDate = DateTime.Now,
+                ApproveDate = DateTime.Now,
+            }).ExecuteAffrows();
+            fsql.Insert(new RequestDetailEntity
+            {
+                ID = 55377,
+                RequestID = 21968,
+                OutboundDate = DateTime.Now,
+            }).ExecuteAffrows();
+            // 1.联表, 主表id查询,返回RequestEntity,AddDate不为null
+            var aaa = fsql.Select<RequestEntity, RequestDetailEntity>()
+                .LeftJoin((a, b) => a.ID == b.RequestID)
+                .Where((a, b) => a.ID == 21968)
+                .ToList();
+
+            // 2.联表, 相同的主表ID,AddDate为null, 子表的OutboundDate也为null
+            var bbb = fsql.Select<RequestEntity, RequestDetailEntity>()
+                .LeftJoin((a, b) => a.ID == b.RequestID)
+                .Where((a, b) => a.ID == 21968)
+                .ToList((a, b) => new
+                {
+                    a.ID,
+                    DetailID = b.ID,
+                    a.AddDate,
+                    b.OutboundDate,
+                });
+
+            // 3.单表, 以上相同的子表id, OutboundDate 不为null
+            var data = fsql.Select<RequestDetailEntity>()
+                .Where(a => a.ID == 55377)
+                .ToList();
+
+            fsql.Delete<IdentityTable>().Where("1=1").ExecuteAffrows();
+            fsql.Insert(new IdentityTable { name = "name01", create_time = DateTime.Now }).ExecuteAffrows();
+            var itrt01 = fsql.Select<IdentityTable>().ToList();
+            var itrt02 = fsql.Select<IdentityTable>().ToList(a => a.create_time);
+            var itrt03 = fsql.Select<IdentityTable>().ToList(a => new { a.create_time });
+
+            fsql.CodeFirst.SyncStructure<Account>();
+
+
+            var dbpars = new List<DbParameter>();
+
+            var a1id1 = Guid.NewGuid();
+            var a1id2 = Guid.NewGuid();
+            //fsql.CodeFirst.IsGenerateCommandParameterWithLambda = true;
+            var sql1a0 = fsql.Select<User1>()
+                .WithParameters(dbpars)
+                .Where(a => a.Id == a1id1)
+                .OrderBy(a => a.Id)
+
+                .UnionAll(
+                    fsql.Select<User1>()
+                        .WithParameters(dbpars)
+                        .Where(a => a.Id == a1id2)
+                        .OrderByDescending(a => a.Id),
+
+                    fsql.Select<User1>()
+                        .WithParameters(dbpars)
+                        .Where(a => a.Id == a1id2)
+                        .OrderByDescending(a => a.Id)
+                )
+                .Where(a => a.Id == a1id1 || a.Id == a1id2)
+                .ToList();
+            var sql1a1 = fsql.Select<User1>()
+                .Where(a => a.Id == a1id1)
+                .UnionAll(
+                    fsql.Select<User1>()
+                    .Where(a => a.Id == a1id2)
+                )
+                .Where(a => a.Id == a1id1 || a.Id == a1id2)
+                .ToList();
+            var sql1a2 = fsql.Select<User1, UserGroup>()
+                .InnerJoin((a, b) => a.GroupId == b.Id)
+                .Where((a, b) => a.Id == a1id1)
+                .WithTempQuery((a, b) => new { user = a, group = b }) //匿名类型
+
+                .UnionAll(
+                    fsql.Select<User1, UserGroup>()
+                        .InnerJoin((a, b) => a.GroupId == b.Id)
+                        .Where((a, b) => a.Id == a1id2)
+                        .WithTempQuery((a, b) => new { user = a, group = b }) //匿名类型
+                )
+
+                .Where(a => a.user.Id == a1id1 || a.user.Id == a1id2)
+                .ToList();
+
+            fsql.Aop.AuditValue += (_, e) =>
+            {
+
+            };
+
+            var tt1 = new ProjectItem { ID = 1, MaxQuantity = 0, Code = null, Name = null };
+            var tt2 = new ProjectItem { ID = 1, MaxQuantity = 100, Code = null, Name = null };
+            var repot2 = fsql.GetRepository<ProjectItem>();
+
+            repot2.Attach(tt1);
+            var nt1 = repot2.Update(tt2);
+
+            fsql.Delete<User1>().Where("1=1").ExecuteAffrows();
+            fsql.Insert(new List<User1>
+            {
+                new User1 { Nickname = "nickname11", Username = "username11", Description = "desc11" },
+                new User1 { Nickname = "n2", Username = "u2", Description = "d2" },
+                new User1 { Nickname = "n3", Username = "u3", Description = "d3" },
+            }).ExecuteAffrows();
+
+            var firebirdList01 = fsql.Select<User1>().ToList();
 
             fsql.UseJsonMap();
 
@@ -711,17 +866,7 @@ namespace base_entity
 
             fsql.Select<User1>().Where(a => a.Id == new Guid("xxx")).ToList(a => new Guid("zzz"));
 
-            fsql.Aop.AuditValue += (_, e) =>
-            {
-
-            };
-
-            var tt1 = new ProjectItem { ID = 1, MaxQuantity = 0, Code = null, Name = null };
-            var tt2 = new ProjectItem { ID = 1, MaxQuantity = 100, Code = null, Name = null };
-            var repot2 = fsql.GetRepository<ProjectItem>();
-
-            repot2.Attach(tt1);
-            var nt1 = repot2.Update(tt2);
+            
 
             var fsql2 = fsql;
             // 动态构建实体类型，树形结构，引用自身类型
@@ -803,22 +948,22 @@ namespace base_entity
                 })
                 .ToSql();
 			Console.WriteLine(list0x1sql);
-			var sql1c2 = fsql.Select<User1>()
-				.GroupBy(a => new { a.Nickname, a.Avatar })
-				.WithTempQuery(b => new
-				{
-					sum = b.Sum(b.Value.Sort),
-					b.Key.Nickname,
-					b.Key.Avatar,
-				})
-				.OrderByDescending(arg => arg.sum)
-				.ToSql(arg => new
-				{
-					str1 = string.Concat(arg.Nickname, '-', arg.Avatar, '-'),
-					str2 = string.Concat(arg.Nickname, '-', arg.Avatar)
-				});   //报错 多括号
-					  //.ToOne(arg => string.Concat(arg.Nickname, '-', arg.Avatar)); //正常
-			Console.WriteLine(sql1c2);
+			//var sql1c2 = fsql.Select<User1>()
+			//	.GroupBy(a => new { a.Nickname, a.Avatar })
+			//	.WithTempQuery(b => new
+			//	{
+			//		sum = b.Sum(b.Value.Sort),
+			//		b.Key.Nickname,
+			//		b.Key.Avatar,
+			//	})
+			//	.OrderByDescending(arg => arg.sum)
+			//	.ToSql(arg => new
+			//	{
+			//		str1 = string.Concat(arg.Nickname, '-', arg.Avatar, '-'),
+			//		str2 = string.Concat(arg.Nickname, '-', arg.Avatar)
+			//	});   //报错 多括号
+			//		  //.ToOne(arg => string.Concat(arg.Nickname, '-', arg.Avatar)); //正常
+			//Console.WriteLine(sql1c2);
 
 			//var clickhouseSql1 = fsql.Select<User1>().Where(a => new[] { 1, 2, 3 }.Contains(a.GroupId)).ToSql();
 			//         var clickhouseVal1 = new[] { 1, 2, 3 };
@@ -1352,9 +1497,9 @@ var sql11111 = fsql.Select<Class1111>()
             //});
             fsql.Insert(Enumerable.Range(0, 100).Select(a => new User1 { Id = Guid.NewGuid(), Nickname = $"nickname{a}", Username = $"username{a}", Description = $"desc{a}" }).ToArray()).ExecuteAffrows();
 
-            fsql.InsertOrUpdate<User1>()
-                .SetSource(fsql.Select<User1>().ToList())
-                .ExecuteMySqlBulkCopy();
+            //fsql.InsertOrUpdate<User1>()
+            //    .SetSource(fsql.Select<User1>().ToList())
+            //    .ExecuteMySqlBulkCopy();
 
             var updatejoin01 = fsql.Update<User1>()
                 .Join(fsql.Select<UserGroup>(), (a, b) => a.GroupId == b.Id)
@@ -1664,48 +1809,6 @@ var sql11111 = fsql.Select<Class1111>()
             var sqlskdfj = fsql.Select<object>().AsType(typeof(BBB)).ToSql(a => new CCC());
 
 
-            var dbpars = new List<DbParameter>();
-
-            var a1id1 = Guid.NewGuid();
-            var a1id2 = Guid.NewGuid();
-            //fsql.CodeFirst.IsGenerateCommandParameterWithLambda = true;
-            var sql1a0 = fsql.Select<User1>()
-                .WithParameters(dbpars)
-                .Where(a => a.Id == a1id1)
-
-                .UnionAll(
-                    fsql.Select<User1>()
-                        .WithParameters(dbpars)
-                        .Where(a => a.Id == a1id2),
-
-                    fsql.Select<User1>()
-                        .WithParameters(dbpars)
-                        .Where(a => a.Id == a1id2)
-                )
-                .Where(a => a.Id == a1id1 || a.Id == a1id2)
-                .ToSql();
-            var sql1a1 = fsql.Select<User1>()
-                .Where(a => a.Id == a1id1)
-                .UnionAll(
-                    fsql.Select<User1>()
-                    .Where(a => a.Id == a1id2)
-                )
-                .Where(a => a.Id == a1id1 || a.Id == a1id2)
-                .ToSql();
-            var sql1a2 = fsql.Select<User1, UserGroup>()
-                .InnerJoin((a, b) => a.GroupId == b.Id)
-                .Where((a, b) => a.Id == a1id1)
-                .WithTempQuery((a, b) => new { user = a, group = b }) //匿名类型
-
-                .UnionAll(
-                    fsql.Select<User1, UserGroup>()
-                        .InnerJoin((a, b) => a.GroupId == b.Id)
-                        .Where((a, b) => a.Id == a1id2)
-                        .WithTempQuery((a, b) => new { user = a, group = b }) //匿名类型
-                )
-
-                .Where(a => a.user.Id == a1id1 || a.user.Id == a1id2)
-                .ToSql();
 
 
             var ddlsql01 = fsql.CodeFirst.GetComparisonDDLStatements<StringNulable>();
@@ -3293,6 +3396,9 @@ public partial class ProjectItem
 
 }
 
+/// <summary>
+/// 账户
+/// </summary>
 [Table(Name = "t_account")]
 public class Account
 {
@@ -3326,4 +3432,105 @@ class TableOptions
 {
     public int Value1 { get; set; }
     public string Value2 { get; set; }
+}
+
+[Table(Name = "tb_request_detail")]
+public class RequestDetailEntity
+{
+    [Column(IsPrimary = true)]
+    public int ID { get; set; }
+
+    [Column(IsNullable = false)]
+    public int RequestID { get; set; }
+
+    [JsonProperty]
+    public DateTime? OutboundDate { get; set; }
+}
+
+
+[Table(Name = "tb_request")]
+public class RequestEntity
+{
+    [Column(IsPrimary = true, Position = 1)]
+    public int ID { get; set; }
+
+    [Column(Position = -2, IsNullable = false, DbType = "datetime")]
+    public DateTime? AddDate { get; set; }
+
+    [Column(IsNullable = true, Position = 71)]
+    public DateTime? ApproveDate { get; set; }
+}
+public sealed class MemberActionDayCountModel
+{
+    #region properties
+    /// <summary>
+    /// MemberId
+    /// </summary>
+    [Column(IsPrimary = true)] public long MemberId { get; set; }
+
+    /// <summary>
+    /// 日期
+    /// </summary>
+    [Column(IsPrimary = true)] public int Date { get; set; }
+
+    /// <summary>
+    /// 所有活动
+    /// </summary>
+    public int Activity { get; set; }
+
+    /// <summary>
+    /// 线上活动
+    /// </summary>
+    public int OnlineActivity { get; set; }
+
+    /// <summary>
+    /// 线下活动
+    /// </summary>
+    public int OfflineActivity { get; set; }
+
+    /// <summary>
+    /// 线下活动中的品鉴会
+    /// </summary>
+    public int Pinjianhui { get; set; }
+
+    /// <summary>
+    /// 线下活动中的回场游
+    /// </summary>
+    public int Huichangyou { get; set; }
+
+    /// <summary>
+    /// 所有订单
+    /// </summary>
+    public int Form { get; set; }
+
+    /// <summary>
+    /// 所有订单金额
+    /// </summary>
+    public decimal FormAmount { get; set; }
+
+    /// <summary>
+    /// 订单中的积分订单
+    /// </summary>
+    public int IntegralForm { get; set; }
+
+    /// <summary>
+    /// 所有扫码
+    /// </summary>
+    public int ScanCode { get; set; }
+
+    /// <summary>
+    /// 所有扫码金额
+    /// </summary>
+    public decimal ScanCodeAmount { get; set; }
+    #endregion
+}
+[ExpressionCall]
+public static class ExpressionCallExtesions
+{
+    static ThreadLocal<ExpressionCallContext> context = new ThreadLocal<ExpressionCallContext>();
+    public static int CountDistinct<TKey, TValue>(this ISelectGroupingAggregate<TKey, TValue> that, object column)
+    {
+        context.Value.Result = $"count(distinct {context.Value.ParsedContent["column"]})";
+        return 0;
+    }
 }
